@@ -1,5 +1,4 @@
 from tkinter import messagebox
-import mysql.connector
 import os
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -147,14 +146,18 @@ class ContactList:
             "<Key>",
             lambda event: [
                 self.validate_entry(event, self.ent_phone, category="number"),
-                self.set_phone_defaults(event),
+                self.set_phone_defaults(event)
+                if not self.cmb_code.get() and not self.cmb_phone_category.get()
+                else "",
             ],
         )
         self.ent_phone.bind(
             "<KeyRelease>",
             lambda event: [
                 self.validate_entry(event, self.ent_phone, category="number"),
-                self.set_phone_defaults(event),
+                self.set_phone_defaults(event)
+                if not self.cmb_code.get() and not self.cmb_phone_category.get()
+                else "",
             ],
         )
 
@@ -271,24 +274,7 @@ class ContactList:
             width=30,
             height=1,
             command=lambda: [
-                database.add_contact(
-                    self,
-                    (
-                        self.first_name.get(),
-                        self.last_name.get(),
-                        self.code.get() if self.phone.get() else "",
-                        self.phone.get() if self.phone.get() else "",
-                        self.cmb_phone_category.get() if self.phone.get() else "",
-                        self.email.get(),
-                        self.street.get(),
-                        self.house_number.get()
-                        if self.house_number.get() and self.street.get()
-                        else "",
-                        self.city.get(),
-                        self.cmb_province.get(),
-                        self.cmb_country.get(),
-                    ),
-                ),
+                database.add_contact(self, self.get_contact_data()),
                 self.reset_form() if database.completed else "",
             ],
         )
@@ -362,25 +348,7 @@ class ContactList:
             width=30,
             height=1,
             command=lambda: [
-                database.update_contact(
-                    self,
-                    (
-                        self.first_name.get(),
-                        self.last_name.get(),
-                        self.code.get() if self.phone.get() else "",
-                        self.phone.get() if self.phone.get() else "",
-                        self.cmb_phone_category.get() if self.phone.get() else "",
-                        self.email.get(),
-                        self.street.get(),
-                        self.house_number.get()
-                        if self.house_number.get() and self.street.get()
-                        else "",
-                        self.city.get(),
-                        self.cmb_province.get(),
-                        self.cmb_country.get(),
-                        self.tree_contacts.focus(),
-                    ),
-                ),
+                database.update_contact(self, self.get_contact_data()),
                 self.reset_form() if database.completed else "",
             ],
         )
@@ -430,6 +398,24 @@ class ContactList:
             self.cmb_province["state"] = "disabled"
             self.cmb_province.set("")
 
+    def get_contact_data(self):
+        return [
+            self.first_name.get(),
+            self.last_name.get(),
+            self.code.get() if self.phone.get() else "",
+            self.phone.get() if self.phone.get() else "",
+            self.cmb_phone_category.get() if self.phone.get() else "",
+            self.email.get(),
+            self.street.get(),
+            self.house_number.get()
+            if self.house_number.get() and self.street.get()
+            else "",
+            self.city.get(),
+            self.cmb_province.get(),
+            self.cmb_country.get(),
+            self.tree_contacts.focus(),
+        ]
+
     def reset_form(self):
         self.lbl_code.config(text="", image="")
         self.cmb_code.set("")
@@ -455,24 +441,7 @@ class ContactList:
                 width=30,
                 height=1,
                 command=lambda: [
-                    database.add_contact(
-                        self,
-                        (
-                            self.first_name.get(),
-                            self.last_name.get(),
-                            self.code.get() if self.phone.get() else "",
-                            self.phone.get() if self.phone.get() else "",
-                            self.cmb_phone_category.get() if self.phone.get() else "",
-                            self.email.get(),
-                            self.street.get(),
-                            self.house_number.get()
-                            if self.house_number.get() and self.street.get()
-                            else "",
-                            self.city.get(),
-                            self.cmb_province.get(),
-                            self.cmb_country.get(),
-                        ),
-                    ),
+                    database.add_contact(self, self.get_contact_data()),
                     self.reset_form() if database.completed else "",
                 ],
             )
@@ -485,14 +454,7 @@ class ContactList:
 
     def show_contacts(self):
         # Fills the treeview with the contacts in the DB
-        db = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password=database.PASSWORD,
-            database="contact_list",
-            auth_plugin="mysql_native_password",
-        )
-
+        db = database.connection("contact_list")
         cur = db.cursor()
         sql = "SELECT * FROM contact ORDER BY first_name ASC"
 
@@ -586,35 +548,29 @@ class WinData(tk.Toplevel):
 
         contact = database.search_contact(id=id)[0]
 
-        tk.Label(self.container, text="First Name:", font="Default 11 bold").grid(
+        tk.Label(self.container, text="Full Name:", font="Default 11 bold").grid(
             row=0, column=0, padx=5, pady=5, sticky=tk.E
         )
-        lbl_first_name = tk.Label(self.container, text=contact[1])
-        lbl_first_name.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
-
-        tk.Label(self.container, text="Last Name:", font="Default 11 bold").grid(
-            row=1, column=0, padx=5, pady=5, sticky=tk.E
-        )
-        lbl_last_name = tk.Label(self.container, text=contact[2])
-        lbl_last_name.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
+        lbl_name = tk.Label(self.container, text=contact[1] + " " + contact[2])
+        lbl_name.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
 
         tk.Label(self.container, text="Phone:", font="Default 11 bold").grid(
-            row=2, column=0, padx=5, pady=5, sticky=tk.E
+            row=1, column=0, padx=5, pady=5, sticky=tk.E
         )
         lbl_phone = tk.Label(
             self.container,
             text=get_phone(contact[3], contact[4], contact[5]),
         )
-        lbl_phone.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
+        lbl_phone.grid(row=1, column=1, padx=5, pady=5, sticky=tk.W)
 
         tk.Label(self.container, text="Email:", font="Default 11 bold").grid(
-            row=3, column=0, padx=5, pady=5, sticky=tk.E
+            row=2, column=0, padx=5, pady=5, sticky=tk.E
         )
         lbl_email = tk.Label(self.container, text=contact[6])
-        lbl_email.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
+        lbl_email.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
 
         tk.Label(self.container, text="Address:", font="Default 11 bold").grid(
-            row=4, column=0, padx=5, pady=5, sticky=tk.E
+            row=3, column=0, padx=5, pady=5, sticky=tk.E
         )
 
         lbl_address = tk.Label(
@@ -624,7 +580,7 @@ class WinData(tk.Toplevel):
             font="Default 11 underline",
             anchor=tk.W,
         )
-        lbl_address.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
+        lbl_address.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
         lbl_address.bind(
             "<Button-1>",
             lambda e: self.open_google_maps(

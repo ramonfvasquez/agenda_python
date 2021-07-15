@@ -3,46 +3,45 @@ import re
 import tkinter as tk
 from tkinter import messagebox
 
-PASSWORD = ""
 completed = False
 
 
-def create_db():
-    db = mysql.connector.connect(
+def connection(database=None):
+    return mysql.connector.connect(
         host="localhost",
         user="root",
-        password=PASSWORD,
+        password="R+D@11",
+        database=database,
         auth_plugin="mysql_native_password",
     )
 
+
+def create_db():
+    db = connection()
     try:
         cur = db.cursor()
-        cur.execute("CREATE DATABASE contact_list;")
+        sql = "CREATE DATABASE contact_list;"
+
+        cur.execute(sql)
+
         print("The DB has been successfully created! :)")
     except:
         print()
 
 
 def create_table():
-    db = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password=PASSWORD,
-        database="contact_list",
-        auth_plugin="mysql_native_password",
-    )
-
+    db = connection("contact_list")
     try:
         cur = db.cursor()
-        sql = (
-            "CREATE TABLE contact (id INT(10) NOT NULL PRIMARY KEY AUTO_INCREMENT, "
-            + "first_name VARCHAR(50) COLLATE utf8_spanish2_ci NOT NULL, last_name "
-            + "VARCHAR(50) COLLATE utf8_spanish2_ci, country_code VARCHAR(10), "
-            + "phone VARCHAR(20), phone_category VARCHAR(10), email VARCHAR(50), "
-            + "street VARCHAR(50) COLLATE utf8_spanish2_ci, house_number VARCHAR(10), city "
-            + "VARCHAR(50) COLLATE utf8_spanish2_ci, province VARCHAR(50) COLLATE "
-            + "utf8_spanish2_ci, country VARCHAR(50) COLLATE utf8_spanish2_ci);"
-        )
+        sql = """
+            CREATE TABLE contact (id INT(10) NOT NULL PRIMARY KEY AUTO_INCREMENT, 
+            first_name VARCHAR(50) COLLATE utf8_spanish2_ci NOT NULL, last_name 
+            VARCHAR(50) COLLATE utf8_spanish2_ci, country_code VARCHAR(10), 
+            phone VARCHAR(20), phone_category VARCHAR(10), email VARCHAR(50), 
+            street VARCHAR(50) COLLATE utf8_spanish2_ci, house_number VARCHAR(10), city 
+            VARCHAR(50) COLLATE utf8_spanish2_ci, province VARCHAR(50) COLLATE 
+            utf8_spanish2_ci, country VARCHAR(50) COLLATE utf8_spanish2_ci);
+            """
 
         cur.execute(sql)
 
@@ -54,16 +53,15 @@ def create_table():
 def add_contact(parent, data):
     global completed
 
-    db = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password=PASSWORD,
-        database="contact_list",
-        auth_plugin="mysql_native_password",
-    )
+    data.remove(data[-1])
 
+    db = connection("contact_list")
     cur = db.cursor()
-    sql = "INSERT INTO contact (first_name, last_name, country_code, phone, phone_category, email, street, house_number, city, province, country) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+    sql = """
+        INSERT INTO contact (first_name, last_name, country_code, phone, 
+        phone_category, email, street, house_number, city, province, country) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+        """
     invalid = get_invalid_data(data)
 
     if data[0]:
@@ -103,20 +101,19 @@ def add_contact(parent, data):
 
         completed = False
 
+    db.close()
+
 
 def update_contact(parent, data):
     global completed
 
-    db = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password=PASSWORD,
-        database="contact_list",
-        auth_plugin="mysql_native_password",
-    )
-
+    db = connection("contact_list")
     cur = db.cursor()
-    sql = "UPDATE contact SET first_name = %s, last_name = %s, country_code = %s, phone = %s, phone_category = %s, email = %s, street = %s, house_number = %s, city = %s, province = %s, country = %s WHERE id = %s;"
+    sql = """
+        UPDATE contact SET first_name = %s, last_name = %s, country_code = %s, 
+        phone = %s, phone_category = %s, email = %s, street = %s, house_number = %s, 
+        city = %s, province = %s, country = %s WHERE id = %s;
+        """
     invalid = get_invalid_data(data)
 
     if data[0]:
@@ -149,26 +146,7 @@ def update_contact(parent, data):
                 width=30,
                 height=1,
                 command=lambda: [
-                    add_contact(
-                        parent,
-                        (
-                            parent.first_name.get(),
-                            parent.last_name.get(),
-                            parent.code.get() if parent.phone.get() else "",
-                            parent.phone.get() if parent.phone.get() else "",
-                            parent.cmb_phone_category.get()
-                            if parent.phone.get()
-                            else "",
-                            parent.email.get(),
-                            parent.street.get(),
-                            parent.house_number.get()
-                            if parent.house_number.get() and parent.street.get()
-                            else "",
-                            parent.city.get(),
-                            parent.cmb_province.get(),
-                            parent.cmb_country.get(),
-                        ),
-                    ),
+                    add_contact(parent, parent.get_contact_data()),
                     parent.reset_form() if completed else "",
                 ],
             )
@@ -178,21 +156,18 @@ def update_contact(parent, data):
     else:
         messagebox.showerror("Name Required", "You can't update a nameless contact!")
 
+    db.close()
+
 
 def delete_contact(parent, treeview):
-    db = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password=PASSWORD,
-        database="contact_list",
-        auth_plugin="mysql_native_password",
-    )
-
+    # Sets the instructin to delete the selected contact
+    db = connection("contact_list")
     cur = db.cursor()
     sql_1 = "DELETE FROM contact WHERE id = %s;"
     id = treeview.focus()
     dato = (id,)
 
+    # Gets first and last names to fill the messagebox
     sql_2 = "SELECT first_name, last_name FROM contact WHERE id = %s;    "
     cur.execute(sql_2, dato)
     res = cur.fetchall()
@@ -209,16 +184,11 @@ def delete_contact(parent, treeview):
         db.commit()
         parent.show_contacts()
 
+    db.close()
+
 
 def search_contact(**kwargs):
-    db = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password=PASSWORD,
-        database="contact_list",
-        auth_plugin="mysql_native_password",
-    )
-
+    db = connection("contact_list")
     data = ()
     sql = ""
 
@@ -247,6 +217,8 @@ def search_contact(**kwargs):
 
     cur.execute(sql, data)
     res = cur.fetchall()
+
+    db.close()
 
     return res
 
