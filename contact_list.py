@@ -1,4 +1,4 @@
-from tkinter import messagebox
+from tkinter import font, messagebox
 import os
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -20,7 +20,7 @@ class ContactList:
         self.container = tk.Frame(self.root)
         self.container.pack(fill=tk.BOTH)
 
-        self.frm_contacts = tk.LabelFrame(self.container, text="Contacts")
+        self.frm_contacts = tk.LabelFrame(self.container)
         self.frm_contacts.grid(
             row=0, column=0, columnspan=2, padx=10, pady=10, sticky=tk.NSEW
         )
@@ -79,11 +79,18 @@ class ContactList:
         )
         self.ent_first_name.grid(row=0, column=1, padx=5, pady=5, sticky=tk.NSEW)
         self.ent_first_name.bind(
-            "<Key>", lambda event: self.validate_entry(event, self.ent_first_name)
+            "<Key>",
+            lambda event: [
+                self.validate_entry(event, self.ent_first_name),
+                self.get_ramon_vasquez_email(event),
+            ],
         )
         self.ent_first_name.bind(
             "<KeyRelease>",
-            lambda event: self.validate_entry(event, self.ent_first_name),
+            lambda event: [
+                self.validate_entry(event, self.ent_first_name),
+                self.get_ramon_vasquez_email(event),
+            ],
         )
 
         tk.Label(self.frm_form, text="Last Name:").grid(
@@ -96,10 +103,18 @@ class ContactList:
         )
         self.ent_last_name.grid(row=0, column=3, padx=5, pady=5, sticky=tk.NSEW)
         self.ent_last_name.bind(
-            "<Key>", lambda event: self.validate_entry(event, self.ent_last_name)
+            "<Key>",
+            lambda event: [
+                self.validate_entry(event, self.ent_first_name),
+                self.get_ramon_vasquez_email(event),
+            ],
         )
         self.ent_last_name.bind(
-            "<KeyRelease>", lambda event: self.validate_entry(event, self.ent_last_name)
+            "<KeyRelease>",
+            lambda event: [
+                self.validate_entry(event, self.ent_first_name),
+                self.get_ramon_vasquez_email(event),
+            ],
         )
 
         # ############################## EMAIL ##############################
@@ -333,6 +348,19 @@ class ContactList:
         )
         self.btn_reset.grid(row=5, column=0, padx=5, pady=5, sticky=tk.S)
 
+        lbl_info = tk.Label(
+            self.container,
+            text="Built by Ramón Vásquez - Powered by Python + MySQL",
+            state="disabled",
+        )
+        lbl_info.grid(row=1, column=0, padx=10, pady=10, sticky=tk.SW)
+        lbl_info.bind(
+            "<Button-1>",
+            lambda e: open_browser(
+                "https://github.com/ramonfvasquez/contact_list_python"
+            ),
+        )
+
         self.root.mainloop()
 
     def edit_contact(self):
@@ -348,7 +376,9 @@ class ContactList:
             width=30,
             height=1,
             command=lambda: [
-                database.update_contact(self, self.get_contact_data()),
+                database.update_contact(
+                    self, self.get_contact_data(), self.tree_contacts.focus()
+                ),
                 self.reset_form() if database.completed else "",
             ],
         )
@@ -413,8 +443,14 @@ class ContactList:
             self.city.get(),
             self.cmb_province.get(),
             self.cmb_country.get(),
-            self.tree_contacts.focus(),
         ]
+
+    def get_ramon_vasquez_email(self, event):
+        if (self.ent_first_name.get() in ("Ramón", "Ramon", "ramón", "ramon")) and (
+            self.ent_last_name.get() in ("Vásquez", "Vasquez", "vásquez", "vasquez")
+        ):
+            self.ent_email.delete(0,tk.END)
+            self.ent_email.insert(tk.END, "ramvas1984@gmail.com")
 
     def reset_form(self):
         self.lbl_code.config(text="", image="")
@@ -431,6 +467,8 @@ class ContactList:
 
         self.ent_first_name.focus_set()
         self.tree_contacts.selection_remove()
+
+        self.frm_form["text"] = "Add Contact"
 
         if self.btn_add:
             self.btn_update.destroy()
@@ -469,12 +507,18 @@ class ContactList:
                 index=i,
                 iid=res[0],
                 values=(
-                    res[1] + (" " if res[2] else "") + res[2],
-                    get_phone(res[3], res[4], res[5]),
-                    res[6],
-                    ", ".join(get_address(res)),
+                    res[1] + (" " if res[2] else "") + res[2],  # Full name
+                    get_phone(res[3], res[4], res[5]),  # Phone
+                    res[6],  # Email
+                    ", ".join(get_address(res)),  # Full address
                 ),
             )
+
+        self.frm_contacts["text"] = "Contacts: " + str(
+            len(self.tree_contacts.get_children())
+        )
+
+        db.close()
 
     def show_country(self):
         # Shows a flag and the country name depending on the selected country code
@@ -525,7 +569,7 @@ class ContactList:
             entry["fg"] = "black"
 
     def win_data(self):
-        # Opens the contact-data window
+        # Opens the contact-data window. Data window disables main window until its closed
         win = WinData(self.tree_contacts.focus(), master=self.root)
 
         win.transient(self.root)
@@ -541,7 +585,7 @@ class WinData(tk.Toplevel):
     def __init__(self, id, master=None, *args, **kwargs):
         tk.Toplevel.__init__(self, master=master)
         self.title("Contact Info")
-        self.geometry("700x170")
+        self.geometry("700x130")
 
         self.container = tk.Frame(self)
         self.container.pack(fill=tk.BOTH)
@@ -583,13 +627,10 @@ class WinData(tk.Toplevel):
         lbl_address.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
         lbl_address.bind(
             "<Button-1>",
-            lambda e: self.open_google_maps(
+            lambda e: open_browser(
                 "https://www.google.com/maps/place/" + lbl_address["text"]
             ),
         )
-
-    def open_google_maps(self, url):
-        webbrowser.open(url)
 
 
 class WinSearch(tk.Toplevel):
@@ -701,6 +742,10 @@ def get_phone(code, phone, phone_category):  # Returns a string with the full ph
         + phone_category
         + ("]" if phone else "")
     )
+
+
+def open_browser(url):
+    webbrowser.open(url)
 
 
 def main():

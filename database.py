@@ -53,8 +53,6 @@ def create_table():
 def add_contact(parent, data):
     global completed
 
-    data.remove(data[-1])
-
     db = connection("contact_list")
     cur = db.cursor()
     sql = """
@@ -81,11 +79,22 @@ def add_contact(parent, data):
 
                 parent.show_contacts()
 
-                messagebox.showinfo(
-                    "Contact Created",
-                    "%s%s%s has been successfully added!"
-                    % (data[0], " " if data[1] else "", data[1]),
-                )
+                if data[0] in ("Ramón", "Ramon", "ramón", "ramon") and data[1] in (
+                    "Vásquez",
+                    "Vasquez",
+                    "vásquez",
+                    "vasquez",
+                ):
+                    messagebox.showinfo(
+                        "Thanks!",
+                        "Thank you for adding me! You can contact me for tech support! :D",
+                    )
+                else:
+                    messagebox.showinfo(
+                        "Contact Created",
+                        "%s%s%s has been successfully added!"
+                        % (data[0], " " if data[1] else "", data[1]),
+                    )
 
                 completed = True
         else:
@@ -104,8 +113,9 @@ def add_contact(parent, data):
     db.close()
 
 
-def update_contact(parent, data):
+def update_contact(parent, data, id):
     global completed
+    data.append(id)
 
     db = connection("contact_list")
     cur = db.cursor()
@@ -180,6 +190,13 @@ def delete_contact(parent, treeview):
     )
 
     if answer:
+        if first in ("Ramón", "Ramon", "ramón", "ramon") and last in (
+            "Vásquez",
+            "Vasquez",
+            "vásquez",
+            "vasquez",
+        ):
+            messagebox.showinfo(":(", "Oh, that's such a pity! Bye! :(")
         cur.execute(sql_1, dato)
         db.commit()
         parent.show_contacts()
