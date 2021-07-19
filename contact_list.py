@@ -12,6 +12,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, "")
 
 class ContactList:
     def __init__(self):
+        self.sorting = ""
+        self.reverse = True
+
         self.root = tk.Tk()
         self.root.title("Contact List")
         self.root.geometry("1450x830")
@@ -152,7 +155,10 @@ class ContactList:
             state="readonly",
         )
         self.cmb_code.grid(row=2, column=2, padx=5, pady=5, sticky=tk.NSEW)
-        self.cmb_code.bind("<<ComboboxSelected>>", lambda _: self.show_country())
+        self.cmb_code.bind(
+            "<<ComboboxSelected>>",
+            lambda _: [self.show_country(), self.set_phone_category()],
+        )
 
         self.phone = tk.StringVar()
         self.ent_phone = tk.Entry(self.frm_form, textvariable=self.phone, width=30)
@@ -449,7 +455,7 @@ class ContactList:
         if (self.ent_first_name.get() in ("Ramón", "Ramon", "ramón", "ramon")) and (
             self.ent_last_name.get() in ("Vásquez", "Vasquez", "vásquez", "vasquez")
         ):
-            self.ent_email.delete(0,tk.END)
+            self.ent_email.delete(0, tk.END)
             self.ent_email.insert(tk.END, "ramvas1984@gmail.com")
 
     def reset_form(self):
@@ -485,6 +491,10 @@ class ContactList:
             )
             self.btn_add.grid(row=0, column=0, padx=5, pady=5, sticky=tk.S)
 
+    def set_phone_category(self):
+        if self.cmb_phone_category.get() == "":
+            self.cmb_phone_category.set("Mobile")
+
     def set_phone_defaults(self, event):
         self.cmb_code.set("+54")
         self.show_country()
@@ -494,7 +504,27 @@ class ContactList:
         # Fills the treeview with the contacts in the DB
         db = database.connection("contact_list")
         cur = db.cursor()
-        sql = "SELECT * FROM contact ORDER BY first_name ASC"
+
+        order = ""
+        field = "CONCAT(first_name, last_name)"
+
+        if self.sorting == "name":
+            field = "CONCAT(first_name, last_name)"
+        elif self.sorting == "phone":
+            field = "CONCAT(country_code, phone, phone_category)"
+        elif self.sorting == "email":
+            field = "email"
+        elif self.sorting == "address":
+            field = "CONCAT(street, house_number, city, province, country)"
+
+        if self.reverse:
+            order = "ASC"
+            # self.reverse = False
+        else:
+            order = "DESC"
+            # self.reverse = True
+
+        sql = "SELECT * FROM contact ORDER BY %s %s" % (field, order)
 
         cur.execute(sql)
         res = cur.fetchall()
@@ -545,6 +575,13 @@ class ContactList:
         self.tree_contacts.heading(
             column, command=lambda _col=column: self.sort_contacts(_col, not reverse)
         )
+
+        self.sorting = column
+
+        if reverse:
+            self.reverse = False
+        else:
+            self.reverse = True
 
     def validate_entry(self, key, entry, category="text"):
         """
